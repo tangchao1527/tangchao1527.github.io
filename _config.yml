@@ -1,5 +1,5 @@
 theme: jekyll-theme-tactile
 deploy:
   type: git
-  repo: https://gihub.com/tangchao1527/tangchao1527.github.io
+  repository: https://gihub.com/tangchao1527/tangchao1527.github.io
   branch: master
