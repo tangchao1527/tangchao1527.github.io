@@ -1,37 +1,96 @@
-## Welcome to GitHub Pages
+# vue导出报表实现
 
-You can use the [editor on GitHub](https://github.com/tangchao1527/tangchao1527.github.io/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
+## vue:导出报表
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+有一个项目需求，要求在前端项目中导出Excel表格，经过查找代码,Vue.js确实可以实现，具体实现步骤为：
 
-### Markdown
+1. 安装依赖
+   //npm 
+   npm install -S file-saver xlsx
+   npm install -D script-loader
+   或者
+   //yarn
+   yarn add file-saver
+   yarn add xlsx
+   yarn add script-loader --dev
+   2.导入两个JS
+   下载Blob.js和Export2Excel.js，在src目录下新建Excel文件夹，里面放入Blob.js和Export2Excel.js两个JS文件
+   **3.在main.js引入这两个JS文件 **
+   import Blob from './excel/Blob'
+   import Export2Excel from './excel/Export2Excel.js'
+   4.在组件中使用
+   //导出的方法
+   exportExcel() {
+      require.ensure([], () => {
+        const { export_json_to_excel } = require('../excel/Export2Excel');
+        const tHeader = ['序号', '昵称', '姓名'];
+        // 上面设置Excel的表格第一行的标题
+        const filterVal = ['index', 'nickName', 'name'];
+        // 上面的index、nickName、name是tableData里对象的属性
+        const list = this.tableData;  //把data里的tableData存到list
+        const data = this.formatJson(filterVal, list);
+        export_json_to_excel(tHeader, data, '列表excel');
+      })
+    },
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+    formatJson(filterVal, jsonData) {
+      return jsonData.map(v => filterVal.map(j => v[j]))
+    }
 
-```markdown
-Syntax highlighted code block
+tHeader是表头，filterVal 中的数据是表格的字段，tableData中存放表格里的数据，类型为数组，里面存放对象，表格的每一行为一个对象。
+tableData 中的值为：
+data () {
+    return {
+      tableData: [
+        {'index':'0',"nickName": "沙滩搁浅我们的旧时光", "name": "小明"},
+        {'index':'1',"nickName": "女人天生高贵", "name": "小红"},
+        {'index':'2',"nickName": "海是彩色的灰尘", "name": "小兰"}
+      ]
+    }
+  }
 
-# Header 1
-## Header 2
-### Header 3
+如果运行时，报如下所示的错误：the dependency was not found
 
-- Bulleted
-- List
+注： 把require('script-loader!vendor/Blob')改为 require('./Blob.js')
+demo 地址：https://github.com/dt8888/exportExcel
 
-1. Numbered
-2. List
+vue报表最后总计一行：
 
-**Bold** and _Italic_ and `Code` text
+<el-table 标签中加入show-summary :summary-method="getSummaries"
 
-[Link](url) and ![Image](src)
-```
+导出sql:order by 跟行号乱了，解决方案子查询
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+select 
+  @rownum:=@rownum+1 as no,
+  t3.productNameNO,
+  t3.playStartTime,
+  t3.playEndTime,
+  t3.orderTime,
+  t3.productCount,
+  t3.payPrice
+from (
+SELECT
+        concat(t2.product_name,'/',t2.product_sn) productNameNO,
+        t2.play_start_time playStartTime,
+        t2.play_end_time playEndTime,
+        DATE_FORMAT(t1.create_time, '%Y-%m-%d') orderTime,
+        t2.product_quantity productCount,
+        (IFNULL(t2.pay_amount,0) - IFNULL(t2.real_amount, 0) - IFNULL(t2.service_fee,0)) payPrice
+    FROM
+        oms_order t1,
+        oms_order_item t2        
+    WHERE
+        t1.order_sn = t2.order_sn
+order by t1.create_time desc 
+) t3, (select @rownum:=0) t4;
 
-### Jekyll Themes
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/tangchao1527/tangchao1527.github.io/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
 
-### Support or Contact
+## vue 导出报表字段合并问题？
 
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+Vue 导出报表功能，后台数据和导出列表需要合并
+ const list = result.rows;  //把data里的tableData存到list
+                            list.forEach((v,index)=>{
+                                v.no=index+1;
+                                v.productNameAndNo = v.productName+"/"+v.productNO;
+               });
